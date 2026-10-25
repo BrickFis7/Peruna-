@@ -44,12 +44,25 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK platform and build tools
+      # GitHub-ajurissa on Android SDK valmiina ($ANDROID_HOME). Asennetaan vain se, mikä puuttuu.
+      - name: Prepare Android SDK
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;34.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+          echo "sdkmanager: $SDKMANAGER"
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          fi
+          if [ ! -d "$ANDROID_HOME/platforms/android-35" ]; then
+            echo "Installing platforms;android-35"
+            "$SDKMANAGER" --install "platforms;android-35"
+          fi
+          if [ ! -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+            echo "Installing build-tools;34.0.0"
+            "$SDKMANAGER" --install "build-tools;34.0.0"
+          fi
+          ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -117,4 +130,3 @@ jobs:
           else
             echo "Unit tests: FAILED or skipped (see the 'Run unit tests' step log)" >> "$GITHUB_STEP_SUMMARY"
           fi
-
